@@ -3,11 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
-
 from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import (
     OneHotEncoder,
@@ -17,78 +15,58 @@ from sklearn.preprocessing import (
     RobustScaler,
     PowerTransformer
 )
-
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
-
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
     confusion_matrix
 )
-
 df = pd.read_csv("student_performance.csv")
-
 print(df.head())
-
 print(df.shape)
-
 print(df.info())
-
 print(df.describe())
-
 print(df.isnull().sum())
-
 print(df.duplicated().sum())
-
 df.drop_duplicates(inplace=True)
-
 sns.countplot(x=df["Pass"])
 plt.title("Pass vs Fail Distribution")
 plt.show()
-
 for col in df.select_dtypes(include=np.number).columns:
     plt.figure(figsize=(6,4))
     sns.histplot(df[col], kde=True)
     plt.title(col)
     plt.show()
-
 for col in df.select_dtypes(include="object").columns:
     plt.figure(figsize=(6,4))
     sns.countplot(x=df[col])
     plt.xticks(rotation=45)
     plt.title(col)
     plt.show()
-
 plt.figure(figsize=(12,8))
 sns.heatmap(df.corr(numeric_only=True), annot=True, cmap="coolwarm")
 plt.title("Correlation Heatmap")
 plt.show()
-
 X = df.drop("Pass", axis=1)
 y = df["Pass"]
-
 numerical_columns = X.select_dtypes(include=np.number).columns.tolist()
 categorical_columns = X.select_dtypes(include="object").columns.tolist()
-
 numeric_transformer = Pipeline([
     ("imputer", SimpleImputer(strategy="median")),
     ("power_transform", PowerTransformer()),
     ("scaler", StandardScaler())
 ])
-
-categorical_transformer = Pipeline([
+categorial_transformer = Pipeline([
     ("imputer", SimpleImputer(strategy="most_frequent")),
     ("onehot", OneHotEncoder(handle_unknown="ignore"))
 ])
-
 preprocessor = ColumnTransformer([
     ("num", numeric_transformer, numerical_columns),
     ("cat", categorical_transformer, categorical_columns)
 ])
-
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
@@ -96,47 +74,33 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42,
     stratify=y
 )
-
 models = {
     "Logistic Regression": LogisticRegression(),
     "Random Forest": RandomForestClassifier(),
     "SVM": SVC(),
     "XGBoost": XGBClassifier(eval_metric="logloss")
 }
-
 best_model = None
 best_accuracy = 0
-
 for name, model in models.items():
-
     pipeline = Pipeline([
         ("preprocessor", preprocessor),
         ("model", model)
     ])
-
     pipeline.fit(X_train, y_train)
-
     y_pred = pipeline.predict(X_test)
-
     accuracy = accuracy_score(y_test, y_pred)
-
     print("\n")
     print("=" * 50)
     print(name)
     print("=" * 50)
-
     print("Accuracy:", accuracy)
-
     print("\nClassification Report\n")
     print(classification_report(y_test, y_pred))
-
     print("\nConfusion Matrix\n")
     print(confusion_matrix(y_test, y_pred))
-
     if accuracy > best_accuracy:
         best_accuracy = accuracy
         best_model = pipeline
-
 joblib.dump(best_model, "student_pass_fail_model.pkl")
-
 print("\nBest Model Saved Successfully")
